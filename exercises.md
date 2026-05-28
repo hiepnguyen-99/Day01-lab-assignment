@@ -50,13 +50,13 @@ Xem xét kịch bản: 10.000 người dùng hoạt động mỗi ngày, mỗi n
 
 
 ## Danh Sách Kiểm Tra Nộp Bài
-- [ ] Tất cả tests pass: `pytest tests/ -v`
-- [ ] `call_openai` đã triển khai và kiểm thử
-- [ ] `call_openai_mini` đã triển khai và kiểm thử
-- [ ] `compare_models` đã triển khai và kiểm thử
-- [ ] `streaming_chatbot` đã triển khai và kiểm thử
-- [ ] `retry_with_backoff` đã triển khai và kiểm thử
-- [ ] `batch_compare` đã triển khai và kiểm thử
-- [ ] `format_comparison_table` đã triển khai và kiểm thử
-- [ ] `exercises.md` đã điền đầy đủ
-- [ ] Sao chép bài làm vào folder `solution` và đặt tên theo quy định 
+- [v] Tất cả tests pass: `pytest tests/ -v`
+- [v] `call_openai` đã triển khai và kiểm thử
+- [v] `call_openai_mini` đã triển khai và kiểm thử
+- [v] `compare_models` đã triển khai và kiểm thử
+- [v] `streaming_chatbot` đã triển khai và kiểm thử
+- [v] `retry_with_backoff` đã triển khai và kiểm thử
+- [v] `batch_compare` đã triển khai và kiểm thử
+- [v] `format_comparison_table` đã triển khai và kiểm thử
+- [v] `exercises.md` đã điền đầy đủ
+- [v] Sao chép bài làm vào folder `solution` và đặt tên theo quy định 
