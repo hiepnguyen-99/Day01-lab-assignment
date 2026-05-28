@@ -61,12 +61,12 @@ def call_openai(
     import os
 
     client = OpenAI(
-        api_key=os.getenv("OPEN_API_KEY"),
+        api_key=os.getenv("OPENAI_API_KEY"),
         base_url="https://openrouter.ai/api/v1"
     )
 
     try:
-        start = time.time()
+        start = time.perf_counter()
 
         response = client.chat.completions.create(
             model=model,
@@ -78,7 +78,7 @@ def call_openai(
             max_tokens=max_tokens,
         )
 
-        end = time.time()
+        end = time.perf_counter()
 
     except Exception as e:
         print(f"Error: {e}")
