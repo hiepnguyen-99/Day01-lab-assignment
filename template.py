@@ -9,6 +9,7 @@ Instructions:
     4. Run: pytest tests/ -v
 """
 
+from http import client
 import os
 import time
 from typing import Any, Callable
@@ -54,8 +55,39 @@ def call_openai(
     """
     # TODO: import OpenAI, create client, call chat.completions.create,
     #       measure start/end time, return (response_text, latency)
-    raise NotImplementedError("Implement call_openai")
 
+    from openai import OpenAI
+    import time
+    import os
+
+    client = OpenAI(
+        api_key=os.getenv("OPEN_API_KEY"),
+        base_url="https://openrouter.ai/api/v1"
+    )
+
+    try:
+        start = time.time()
+
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+        )
+
+        end = time.time()
+
+    except Exception as e:
+        print(f"Error: {e}")
+        return "", 0.0
+
+    response_text = response.choices[0].message.content
+    latency = end - start
+
+    return response_text, latency
 
 # ---------------------------------------------------------------------------
 # Task 2 — Call GPT-4o-mini
@@ -83,8 +115,18 @@ def call_openai_mini(
         Reuse call_openai() by passing model=OPENAI_MINI_MODEL.
     """
     # TODO: call call_openai with model=OPENAI_MINI_MODEL
-    raise NotImplementedError("Implement call_openai_mini")
-
+    
+    try:
+        return call_openai(
+            prompt=prompt,
+            model=OPENAI_MINI_MODEL,
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+        )
+    except Exception as e:
+        print(f"Error: {e}")
+        return "", 0.0
 
 # ---------------------------------------------------------------------------
 # Task 3 — Compare GPT-4o vs GPT-4o-mini
@@ -110,8 +152,22 @@ def compare_models(prompt: str) -> dict:
         (0.75 words ≈ 1 token is a rough approximation)
     """
     # TODO: call call_openai and call_openai_mini, assemble and return the dict
-    raise NotImplementedError("Implement compare_models")
 
+    gpt4o_response, gpt4o_latency = call_openai(prompt)
+
+    mini_response, mini_latency = call_openai_mini(prompt)
+
+    gpt4o_cost_estimate = (
+        (len(gpt4o_response.split()) / 0.75) / 1000
+    ) * COST_PER_1K_OUTPUT_TOKENS["gpt-4o"]
+
+    return {
+        "gpt4o_response": gpt4o_response,
+        "mini_response": mini_response,
+        "gpt4o_latency": gpt4o_latency,
+        "mini_latency": mini_latency,
+        "gpt4o_cost_estimate": gpt4o_cost_estimate,
+    }
 
 # ---------------------------------------------------------------------------
 # Task 4 — Streaming chatbot with conversation history
@@ -135,7 +191,34 @@ def streaming_chatbot() -> None:
         - Trim history to the last 3 turns: history = history[-3:]
     """
     # TODO: enter while-loop, read user input, stream response, maintain history
-    raise NotImplementedError("Implement streaming_chatbot")
+    history = []
+
+    while True:
+        user_input = input("You: ").strip()
+
+        if user_input.lower() in {"quit", "exit"}:
+            break
+
+        history.append({"role": "user", "content": user_input})
+
+        print("Assistant: ", end="", flush=True)
+        assistant_reply = ""
+
+        stream = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=history,
+            stream=True,
+        )
+
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content or ""
+            print(delta, end="", flush=True)
+            assistant_reply += delta
+
+        print()
+
+        history.append({"role": "assistant", "content": assistant_reply})
+        history = history[-3:]
 
 
 # ---------------------------------------------------------------------------
@@ -162,7 +245,17 @@ def retry_with_backoff(
         The last exception raised by fn() after all retries are exhausted.
     """
     # TODO: implement retry loop with exponential backoff
-    raise NotImplementedError("Implement retry_with_backoff")
+    last_exception = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            return fn()
+        except Exception as e:
+            last_exception = e
+            if attempt < max_retries:
+                time.sleep(base_delay * (2 ** attempt))
+
+    raise last_exception
 
 
 # ---------------------------------------------------------------------------
@@ -180,7 +273,14 @@ def batch_compare(prompts: list[str]) -> list[dict]:
         key "prompt" containing the original prompt string.
     """
     # TODO: iterate over prompts, call compare_models, add "prompt" key
-    raise NotImplementedError("Implement batch_compare")
+    results = []
+
+    for prompt in prompts:
+        result = compare_models(prompt)
+        result["prompt"] = prompt
+        results.append(result)
+
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -201,8 +301,37 @@ def format_comparison_table(results: list[dict]) -> str:
         Truncate long text to 40 characters for readability.
     """
     # TODO: build and return a formatted table string
-    raise NotImplementedError("Implement format_comparison_table")
+    def truncate(text: str, length: int = 40) -> str:
+        return text[:length] + "…" if len(text) > length else text
 
+    headers = ["Prompt", "GPT-4o Response", "Mini Response", "GPT-4o Latency", "Mini Latency"]
+
+    rows = []
+    for r in results:
+        rows.append([
+            truncate(r.get("prompt", "")),
+            truncate(r.get("gpt4o_response", "")),
+            truncate(r.get("mini_response", "")),
+            f"{r.get('gpt4o_latency', 0):.3f}s",
+            f"{r.get('mini_latency', 0):.3f}s",
+        ])
+
+    col_widths = [len(h) for h in headers]
+    for row in rows:
+        for i, cell in enumerate(row):
+            col_widths[i] = max(col_widths[i], len(cell))
+
+    def fmt_row(cells):
+        return "| " + " | ".join(cells[i].ljust(col_widths[i]) for i in range(len(cells))) + " |"
+
+    separator = "+-" + "-+-".join("-" * w for w in col_widths) + "-+"
+
+    lines = [separator, fmt_row(headers), separator]
+    for row in rows:
+        lines.append(fmt_row(row))
+    lines.append(separator)
+
+    return "\n".join(lines)
 
 # ---------------------------------------------------------------------------
 # Entry point for manual testing
